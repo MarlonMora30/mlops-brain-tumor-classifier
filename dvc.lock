@@ -1,0 +1,18 @@
+schema: '2.0'
+stages:
+  retrain_and_evaluate:
+    cmd: python src/retrain.py
+    deps:
+    - path: src/retrain.py
+      hash: md5
+      md5: d18dcdd4724958960d29aee4fd099ec6
+      size: 4316
+    outs:
+    - path: metrics.json
+      hash: md5
+      md5: 7db6c968eb5ee03577a2b246caa6d2d8
+      size: 1026
+    - path: src/models/brain_tumor_classifier.keras
+      hash: md5
+      md5: 26fa4b946ef0b2727c3deea53dc749eb
+      size: 228457546

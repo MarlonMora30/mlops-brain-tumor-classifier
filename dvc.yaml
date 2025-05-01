@@ -1,0 +1,10 @@
+stages:
+  retrain_and_evaluate:
+    cmd: python src/retrain.py
+    deps:
+      - src/retrain.py
+    outs:
+      - src/models/brain_tumor_classifier.keras
+    metrics:
+      - metrics.json:
+          cache: false
