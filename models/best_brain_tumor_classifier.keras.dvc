@@ -1,0 +1,5 @@
+outs:
+- md5: f0931c3a28052e13954c5fa1146f697d
+  size: 228457546
+  hash: md5
+  path: best_brain_tumor_classifier.keras
