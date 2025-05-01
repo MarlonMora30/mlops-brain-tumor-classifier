@@ -1,0 +1,5 @@
+outs:
+- md5: f35ae9fa13f45c43c9b743a4a54f10ed
+  size: 228457546
+  hash: md5
+  path: final_brain_tumor_classifier.keras

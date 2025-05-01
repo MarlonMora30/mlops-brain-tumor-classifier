@@ -1,51 +1,71 @@
 import os
-import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import joblib
+import logging
+
+from sklearn.metrics import classification_report, confusion_matrix, roc_curve, auc
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from sklearn.metrics import classification_report, confusion_matrix
-import numpy as np
-import pandas as pd
 
-# --- Configuración de rutas ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VAL_DIR = os.path.join(BASE_DIR, 'data', 'split', 'val')
-MODEL_PATH = os.path.join(BASE_DIR, 'models', 'brain_tumor_classifier.keras')
-REPORT_CSV = os.path.join(BASE_DIR, 'models', 'evaluation_results.csv')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 
-# --- Parámetros ---
-IMG_HEIGHT = 150
-IMG_WIDTH = 150
-BATCH_SIZE = 32
+def evaluate_model(model_path, val_path, class_indices_path):
+    # Cargar modelo y clases
+    model = load_model(model_path)
+    class_indices = joblib.load(class_indices_path)
+    class_labels = list(class_indices.keys())
 
-# --- Generador de validación ---
-datagen = ImageDataGenerator(rescale=1. / 255)
-val_generator = datagen.flow_from_directory(
-    VAL_DIR,
-    target_size=(IMG_HEIGHT, IMG_WIDTH),
-    batch_size=BATCH_SIZE,
-    class_mode='binary',
-    shuffle=False
-)
+    # Generador
+    val_datagen = ImageDataGenerator(rescale=1. / 255)
+    val_generator = val_datagen.flow_from_directory(
+        val_path,
+        target_size=(150, 150),
+        batch_size=1,
+        class_mode='binary',
+        shuffle=False
+    )
 
-# --- Cargar modelo ---
-model = load_model(MODEL_PATH)
+    # Predicciones
+    Y_pred = model.predict(val_generator)
+    y_pred = np.round(Y_pred).astype(int).flatten()
+    y_true = val_generator.classes
 
-# --- Predicciones ---
-pred_probs = model.predict(val_generator)
-pred_classes = (pred_probs > 0.5).astype(int).flatten()
-true_classes = val_generator.classes
-class_labels = list(val_generator.class_indices.keys())
+    # Reporte
+    logging.info("📊 Classification Report:")
+    logging.info("\n" + classification_report(y_true, y_pred, target_names=class_labels))
 
-# --- Clasification report como dict ---
-report_dict = classification_report(true_classes, pred_classes, target_names=class_labels, output_dict=True)
+    # Confusion Matrix
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=class_labels, yticklabels=class_labels)
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Confusion Matrix')
+    plt.tight_layout()
+    plt.savefig("src/models/confusion_matrix.png")
+    plt.close()
 
-# --- Guardar en CSV ---
-report_df = pd.DataFrame(report_dict).transpose()
-report_df.to_csv(REPORT_CSV, index=True)
-print(f"\n✅ Resultados guardados en: {REPORT_CSV}")
+    # ROC Curve
+    fpr, tpr, thresholds = roc_curve(y_true, Y_pred)
+    roc_auc = auc(fpr, tpr)
 
-# --- Mostrar por consola también ---
-print("\n📊 Clasification Report:")
-print(report_df)
-print("\n🧩 Confusion Matrix:")
-print(confusion_matrix(true_classes, pred_classes))
+    plt.figure(figsize=(6, 5))
+    plt.plot(fpr, tpr, color='blue', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], color='gray', linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic')
+    plt.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig("src/models/roc_curve.png")
+    plt.close()
+
+    return {
+        "roc_auc": roc_auc,
+        "confusion_matrix": cm.tolist()
+    }
+
