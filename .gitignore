@@ -148,3 +148,5 @@ data/
 # Modelos entrenados
 *.pkl
 *.h5
+
+.DS_Store
